@@ -1,22 +1,35 @@
-name: Laravel CI
+name: CI
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: testing
+        ports:
+          - 3306:3306
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.3
+          php-version: '8.3'
+          extensions: mbstring, pdo_mysql
+          coverage: xdebug
 
-      - name: Install dependencies
-        run: composer install
+      - run: composer install --prefer-dist
 
-      - name: Run tests
-        run: php artisan test
+      - run: cp .env.example .env.testing
+
+      - run: php artisan key:generate --env=testing
+
+      - run: php artisan migrate --env=testing --force
+
+      - run: php artisan test --coverage
